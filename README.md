@@ -37,7 +37,7 @@ pip install textual pyfiglet
 
 3. **Run the client:**
 ```bash
-python ui.py
+python app.py
 
 ```
 
