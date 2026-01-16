@@ -1,7 +1,7 @@
 import threading
 from textual.app import App, ComposeResult
 from textual.screen import Screen
-from textual.widgets import Input, RichLog, Header, Footer, Button, Label
+from textual.widgets import Input, RichLog, Header, Footer, Button, Label, ListView, ListItem
 from textual.containers import Vertical, Horizontal
 from textual.suggester import SuggestFromList
 from backend import IRCClient
@@ -60,7 +60,13 @@ class ChatScreen(Screen):
     
     def compose(self) -> ComposeResult:
         yield Static(get_banner_widget("HERMES"), classes="banner")
-        yield RichLog(id="chat_log", highlight=True, markup=True)
+        with Horizontal(id="main_layout"):
+            yield RichLog(id="chat_log", highlight=True, markup=True)
+            
+            with Vertical(id="sidebar"):
+                yield Label("USERS", id="sidebar_title")
+                yield ListView(id="user_list")
+                yield Button("DISCONNECT", id="quit_btn")
         yield Input(placeholder="Wake up, Neo...",
                     id="message_input",
                     suggester=SuggestFromList([], case_sensitive=False))
@@ -90,10 +96,11 @@ class ChatScreen(Screen):
     def on_backend_message(self, data):
         """Called by backend. Bridges to UI thread safely."""
 
-        if isinstance(data, dict):
-            if data['type'] == 'namelist':
-                self.dispatch_ui(self.update_suggester, data['names'])
-                return 
+        if isinstance(data, dict) and data['type'] == 'namelist':
+            names = data['names']
+            self.dispatch_ui(self.update_autocomplete, names)
+            self.dispatch_ui(self.update_sidebar, names)
+            return 
         
         message_text = str(data)
 
@@ -130,7 +137,7 @@ class ChatScreen(Screen):
         log.remove_class("status-connecting", "status-connected", "status-error")
         log.add_class(class_name)
 
-    def update_suggester(self, names):
+    def update_autocomplete(self, names):
         try:
             inp = self.query_one(Input)
             inp.suggester = SuggestFromList(names, case_sensitive=False)
@@ -138,8 +145,23 @@ class ChatScreen(Screen):
         except:
             pass
 
+    def update_sidebar(self, names):
+        try:
+            list_view = self.query_one("#user_list", ListView)
+            list_view.clear()
+            names.sort()
+            for name in names:
+                list_view.append(ListItem(Label(name)))
+            
+            self.write_to_log(f"[dim]System: User list updated ({len(names)} users).[/]")
+        except: pass
+
     def write_to_log(self, text):
         self.query_one(RichLog).write(text)
+
+    def on_button_pressed(self, event: Button.Pressed):
+        if event.button.id == "quit_btn":
+            self.disconnect_and_quit()
 
     def on_input_submitted(self, event: Input.Submitted):
         message = event.value
@@ -153,6 +175,11 @@ class ChatScreen(Screen):
             self.write_to_log(f"[bold green]{self.server_config['nick']}[/]: {message}")
             self.client.send_message(message)
             event.input.value = ""
+
+    def disconnect_and_quit(self):
+        if self.client:
+            self.client.disconnect()
+        self.app.exit()
 
 class IRCApp(App):
     def on_mount(self):
