@@ -1,29 +1,28 @@
-# ui.py
-import threading  # <--- 1. ADD THIS IMPORT
+import threading
 from textual.app import App, ComposeResult
-from textual.widgets import Input, RichLog, Header, Footer
+from textual.widgets import Input, RichLog, Header, Footer, Button, Label
+from textual.containers import Vertical, Horizontal
+from textual.suggester import SuggestFromList
 from backend import IRCClient
+from style import MATRIX_CSS, LOGIN_CSS
+from banner import *
 
 class IRCApp(App):
-    # ... (Keep CSS and Compose exactly the same) ...
-    CSS = """
-    Screen { layout: vertical; }
-    RichLog { height: 1fr; border: solid green; }
-    Input { dock: bottom; border: wide $accent; }
-    """
+    CSS = MATRIX_CSS
 
     def compose(self) -> ComposeResult:
-        yield Header()
+        yield Static(get_banner_widget("HERMES"), classes="banner")
         yield RichLog(id="chat_log", highlight=True, markup=True)
-        yield Input(placeholder="Type message...", id="message_input")
+        yield Input(placeholder="Wake up, Neo...",
+                    id="message_input",
+                    suggester=SuggestFromList([], case_sensitive=False))
         yield Footer()
 
     def on_mount(self):
-        # ... (Same as before) ...
         self.server_config = {
             "server": "irc.libera.chat",
             "port": 6667,
-            "nick": "TextualDev01",
+            "nick": "NeosDad",
             "channel": "#python-test-room"
         }
 
@@ -37,38 +36,78 @@ class IRCApp(App):
         self.client.connect()
         self.query_one("#message_input").focus()
 
-    def on_backend_message(self, message_text):
+    def dispatch_ui(self, func, *args):
+        """
+        Helper: Decides whether to run the function directly or schedule it.
+        Prevents the 'RuntimeError' if called from Main Thread.
+        """
+        if threading.current_thread() is threading.main_thread():
+            func(*args)
+        else:
+            self.call_from_thread(func, *args)
+
+    def on_backend_message(self, data):
         """Called by backend. Bridges to UI thread safely."""
+
+        if isinstance(data, dict):
+            if data['type'] == 'namelist':
+                self.dispatch_ui(self.update_suggester, data['names'])
+                return 
         
-        # Formatting logic (Same as before)
+        message_text = str(data)
+
+        # Ignore the ISUPPORT messages
+        if " 005 " in message_text: 
+            return
+
+        if "Joined" in message_text:
+            self.dispatch_ui(self.set_status_border, "status-connected")
+        elif "failed" in message_text or "Error" in message_text:
+            self.dispatch_ui(self.set_status_border, "status-error")
+
         formatted_msg = message_text
+        
         if "Connected" in message_text or "Joined" in message_text:
             formatted_msg = f"[bold green]{message_text}[/]"
+            
         elif ":" in message_text:
-            nick, msg = message_text.split(":", 1)
-            formatted_msg = f"[cyan]{nick}[/]:{msg}"
+            try:
+                parts = message_text.split(":", 1)
+                if len(parts) == 2:
+                    nick, msg = parts
+                    formatted_msg = f"[cyan]{nick}[/]:{msg}"
+            except ValueError:
+                pass
 
-        # --- THE FIX IS HERE ---
-        # If we are ALREADY on the main thread, just write directly.
-        # If we are on a background thread, use call_from_thread.
-        if threading.current_thread() is threading.main_thread():
-            self.write_to_log(formatted_msg)
-        else:
-            self.call_from_thread(self.write_to_log, formatted_msg)
+        self.dispatch_ui(self.write_to_log, formatted_msg)
+
+    def set_status_border(self, class_name):
+        """Helper to change the border color dynamically"""
+        log = self.query_one("#chat_log")
+        log.remove_class("status-connecting", "status-connected", "status-error")
+        log.add_class(class_name)
+
+    def update_suggester(self, names):
+        try:
+            inp = self.query_one(Input)
+            inp.suggester = SuggestFromList(names, case_sensitive=False)
+            # self.write_to_log(f"[dim]Debug: Loaded {len(names)} nicknames for autocomplete.[/]")
+        except:
+            pass
 
     def write_to_log(self, text):
         self.query_one(RichLog).write(text)
 
-    # ... (Keep on_input_submitted exactly the same) ...
     def on_input_submitted(self, event: Input.Submitted):
         message = event.value
         if message:
             if message.strip().lower() == "/quit":
                 self.client.disconnect()
-                self.exit()
+                self.write_to_log(f"[bold red][-] Disconnected from {self.server_config['server']}[/]")
+                self.dispatch_ui(self.set_status_border, "status-error")
                 return
 
-            self.write_to_log(f"[bold magenta]Me[/]: {message}")
+            self.write_to_log(f"[bold green]{self.server_config['nick']}[/]: {message}")
             self.client.send_message(message)
             event.input.value = ""
 

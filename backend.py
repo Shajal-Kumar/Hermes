@@ -83,6 +83,19 @@ class IRCClient():
                 self.callback(f"{sender_nick}: {msg_content}")
             except:
                 pass
+        
+        elif " 353 " in line:
+            try:
+                parts = line.split(" :", 1)
+                names = parts[1].strip().split(" ")
+                clean_names = [n.lstrip("@+") for n in names]
+                
+                self.callback({
+                    "type": "namelist",
+                    "names": clean_names
+                })
+            except:
+                pass
     
     def disconnect(self):
         self.send_raw("QUIT :Goodbye!")
