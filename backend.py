@@ -96,6 +96,12 @@ class IRCClient():
                 })
             except:
                 pass
+        
+        elif " 433 " in line:
+            self.callback(f"Error: Nickname '{self.nickname}' is already in use!")
+        
+        # elif "ERROR" in line or " 4" in line:
+        #     self.callback(f"Server: {line}")
     
     def disconnect(self):
         self.send_raw("QUIT :Goodbye!")

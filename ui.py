@@ -39,7 +39,7 @@ class LoginScreen(Screen):
             channel = self.query_one("#channel", Input).value.strip() or "#python-test-room"
             nick = self.query_one("#nick", Input).value
 
-            channel = "#" + channel if not channel.startswith("#") else channel
+            channel = ("#" + channel) if not channel.startswith("#") else channel
             
             if not nick:
                 self.notify("Nickname is required!", severity="error")
@@ -85,7 +85,7 @@ class ChatScreen(Screen):
         if threading.current_thread() is threading.main_thread():
             func(*args)
         else:
-            self.call_from_thread(func, *args)
+            self.app.call_from_thread(func, *args)
 
     def on_backend_message(self, data):
         """Called by backend. Bridges to UI thread safely."""
@@ -105,6 +105,8 @@ class ChatScreen(Screen):
             self.dispatch_ui(self.set_status_border, "status-connected")
         elif "failed" in message_text or "Error" in message_text:
             self.dispatch_ui(self.set_status_border, "status-error")
+            self.dispatch_ui(self.write_to_log, f"[bold red]{message_text}[/]")
+            return
 
         formatted_msg = message_text
         
