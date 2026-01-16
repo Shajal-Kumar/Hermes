@@ -9,6 +9,7 @@ Here is a professional and engaging `README.md` for your Hermes project.
 **Hermes** is a modern, terminal-based IRC client built with Python and [Textual](https://textual.textualize.io/). It combines the nostalgia of classic IRC with a sleek, Matrix-inspired "Cyberpunk" aesthetic and modern features like autocomplete and a responsive UI.
 
 ## ✨ Features
+![Chat Screen](assets/Chat%20Screen.png)
 
 * **Cyberpunk Aesthetic:** A "Matrix" inspired theme with neon green text on a black background, complete with ASCII art banners.
 * **Modern TUI:** Built on `Textual`, offering a responsive layout, clickable elements, and smooth scrolling.
@@ -46,7 +47,6 @@ python ui.py
 ## 🎮 Usage
 
 1. **Login:**
-![Login Screen](assets/Login%20Screen.png)
 * Launch the app.
 * Enter the **Server Address** (defaults to `irc.libera.chat`).
 * Enter the **Channel** (defaults to `##python-test-room`).
@@ -55,7 +55,6 @@ python ui.py
 
 
 2. **Chatting:**
-![Chat Screen](assets/Chat%20Screen.png)
 * Type messages in the input bar at the bottom.
 * Use the **Right Arrow** key to accept nickname suggestions (ghost text).
 * Type `/quit` or click the **DISCONNECT** button in the sidebar to exit.
