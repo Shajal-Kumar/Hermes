@@ -5,8 +5,8 @@ from textual.widgets import Input, RichLog, Header, Footer, Button, Label, ListV
 from textual.containers import Vertical, Horizontal
 from textual.suggester import SuggestFromList
 from backend import IRCClient
-from style import MATRIX_CSS, LOGIN_CSS
-from banner import *
+from visuals.style import MATRIX_CSS, LOGIN_CSS
+from visuals.banner import *
 
 IRC_COMMANDS = [
     "/join", "/part", "/quit", "/nick", "/me", 
