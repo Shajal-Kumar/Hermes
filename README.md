@@ -1,6 +1,3 @@
-Here is a professional and engaging `README.md` for your Hermes project.
-
----
 
 # Hermes IRC Client
 
